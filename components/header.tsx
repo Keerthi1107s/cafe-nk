@@ -1,6 +1,6 @@
 "use client"
 
-import { Coffee, LogOut, BarChart3 } from "lucide-react"
+import { Coffee, LogOut, BarChart3, ClipboardList, UtensilsCrossed } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCafeStore } from "@/lib/cafe-store"
 
@@ -8,9 +8,11 @@ interface HeaderProps {
   showAnalytics?: boolean
   onToggleAnalytics?: () => void
   analyticsActive?: boolean
+  activeTab?: "reservations" | "orders"
+  onTabChange?: (tab: "reservations" | "orders") => void
 }
 
-export function Header({ showAnalytics, onToggleAnalytics, analyticsActive }: HeaderProps) {
+export function Header({ showAnalytics, onToggleAnalytics, analyticsActive, activeTab, onTabChange }: HeaderProps) {
   const { userRole, setUserRole } = useCafeStore()
 
   return (
@@ -28,6 +30,28 @@ export function Header({ showAnalytics, onToggleAnalytics, analyticsActive }: He
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {userRole === "staff" && activeTab && (
+            <div className="flex gap-1">
+              <Button
+                variant={activeTab === "reservations" ? "default" : "outline"}
+                size="sm"
+                onClick={() => onTabChange?.("reservations")}
+                className="gap-2"
+              >
+                <UtensilsCrossed className="w-4 h-4" />
+                <span className="hidden sm:inline">Reservations</span>
+              </Button>
+              <Button
+                variant={activeTab === "orders" ? "default" : "outline"}
+                size="sm"
+                onClick={() => onTabChange?.("orders")}
+                className="gap-2"
+              >
+                <ClipboardList className="w-4 h-4" />
+                <span className="hidden sm:inline">Orders</span>
+              </Button>
+            </div>
+          )}
           {showAnalytics && (
             <Button
               variant={analyticsActive ? "default" : "outline"}

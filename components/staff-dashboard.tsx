@@ -7,9 +7,11 @@ import { TablesGrid } from "./tables-grid"
 import { TimeSlotSelector } from "./time-slot-selector"
 import { UpcomingReservations } from "./upcoming-reservations"
 import { AnalyticsScreen } from "./analytics-screen"
+import { StaffOrders } from "./staff-orders"
 
 export function StaffDashboard() {
   const [showAnalytics, setShowAnalytics] = useState(false)
+  const [activeTab, setActiveTab] = useState<"reservations" | "orders">("reservations")
 
   return (
     <div className="min-h-screen bg-background">
@@ -17,9 +19,13 @@ export function StaffDashboard() {
         showAnalytics
         onToggleAnalytics={() => setShowAnalytics(!showAnalytics)}
         analyticsActive={showAnalytics}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {showAnalytics ? (
+        {activeTab === "orders" ? (
+          <StaffOrders />
+        ) : showAnalytics ? (
           <AnalyticsScreen />
         ) : (
           <>
