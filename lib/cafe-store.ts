@@ -1,8 +1,12 @@
 "use client"
 
 import { create } from "zustand"
+import type { CartItem } from "./menu-data"
 
 export type TableStatus = "free" | "occupied" | "reserved"
+export type OrderStatus = "pending" | "preparing" | "ready" | "served" | "completed"
+export type DeliveryType = "delivery" | "pickup"
+export type PaymentMethod = "upi" | "card" | "cod" | "wallet"
 
 export interface TimeSlot {
   start: string // "08:00"
@@ -77,34 +81,92 @@ export function formatDate(date: string): string {
   return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
 }
 
+export interface Address {
+  name: string
+  phone: string
+  address: string
+  isSaved?: boolean
+}
+
+export interface Order {
+  id: string
+  items: CartItem[]
+  status: OrderStatus
+  totalPrice: number
+  subtotal: number
+  tax: number
+  deliveryCharges: number
+  discount: number
+  createdAt: Date
+  estimatedDeliveryTime?: number // in minutes
+}
+
+export interface CheckoutState {
+  address?: Address
+  deliveryType: DeliveryType
+  paymentMethod?: PaymentMethod
+  couponCode?: string
+  discountAmount: number
+}
+
 interface CafeStore {
+  // Booking Management
   tables: Table[]
   bookings: Booking[]
   userRole: "staff" | "customer" | null
   selectedDate: string
   selectedSlot: TimeSlot | null
 
+  // Cart Management
+  cartItems: CartItem[]
+  cartVisible: boolean
+
+  // Checkout Management
+  orders: Order[]
+  currentCheckout?: CheckoutState
+  currentOrder?: Order
+
+  // Booking Methods
   setUserRole: (role: "staff" | "customer" | null) => void
   setSelectedDate: (date: string) => void
   setSelectedSlot: (slot: TimeSlot | null) => void
-
   addBooking: (tableId: number, date: string, slot: TimeSlot) => boolean
   cancelBooking: (tableId: number, date: string, slotStart: string) => void
   getBookingsForTable: (tableId: number) => Booking[]
   getBookingsForSlot: (date: string, slot: TimeSlot) => Booking[]
   isTableBookedForSlot: (tableId: number, date: string, slot: TimeSlot) => boolean
   getAvailableSlotsForTable: (tableId: number, date: string) => TimeSlot[]
-
   getTableStatusForSlot: (tableId: number, date: string, slot: TimeSlot) => TableStatus
   getFreeTablesForSlot: (date: string, slot: TimeSlot) => number
   getOccupiedTablesForSlot: (date: string, slot: TimeSlot) => number
   getReservedTablesForSlot: (date: string, slot: TimeSlot) => number
   getEstimatedWaitTime: (date: string, slot: TimeSlot) => number
-
   getMostBookedSlot: () => { slot: TimeSlot; count: number } | null
   getBookingsPerSlot: () => { slot: string; count: number }[]
   getDailyUtilization: () => number
   getTotalBookingsToday: () => number
+
+  // Cart Methods
+  addToCart: (item: CartItem) => void
+  removeFromCart: (itemId: string) => void
+  updateCartItem: (itemId: string, updates: Partial<CartItem>) => void
+  clearCart: () => void
+  getCartTotal: () => number
+  getCartSubtotal: () => number
+  setCartVisible: (visible: boolean) => void
+
+  // Checkout Methods
+  setCheckoutAddress: (address: Address) => void
+  setDeliveryType: (type: DeliveryType) => void
+  setPaymentMethod: (method: PaymentMethod) => void
+  applyCoupon: (code: string) => boolean
+  getCheckoutSummary: () => { subtotal: number; tax: number; delivery: number; discount: number; total: number }
+  placeOrder: (address: Address, deliveryType: DeliveryType, paymentMethod: PaymentMethod) => Order | null
+  
+  // Order Methods
+  updateOrderStatus: (orderId: string, status: OrderStatus) => void
+  getOrder: (orderId: string) => Order | undefined
+  getAllOrders: () => Order[]
 }
 
 const initialTables: Table[] = Array.from({ length: 10 }, (_, i) => ({
@@ -173,12 +235,21 @@ const sampleBookings: Booking[] = [
 ]
 
 export const useCafeStore = create<CafeStore>((set, get) => ({
+  // State
   tables: initialTables,
   bookings: sampleBookings,
+  orders: [],
+  cartItems: [],
+  cartVisible: false,
   userRole: null,
   selectedDate: today,
   selectedSlot: getCurrentTimeSlot() || TIME_SLOTS[0],
+  currentCheckout: {
+    deliveryType: "delivery",
+    discountAmount: 0,
+  },
 
+  // Booking Methods
   setUserRole: (role) => set({ userRole: role }),
   setSelectedDate: (date) => set({ selectedDate: date }),
   setSelectedSlot: (slot) => set({ selectedSlot: slot }),
@@ -317,5 +388,158 @@ export const useCafeStore = create<CafeStore>((set, get) => ({
   getTotalBookingsToday: () => {
     const today = new Date().toISOString().split("T")[0]
     return get().bookings.filter((b) => b.date === today).length
+  },
+
+  // Cart Methods
+  addToCart: (item) => {
+    set((state) => {
+      const existingItem = state.cartItems.find((ci) => ci.id === item.id)
+      if (existingItem) {
+        return {
+          cartItems: state.cartItems.map((ci) =>
+            ci.id === item.id ? { ...ci, quantity: ci.quantity + item.quantity } : ci
+          ),
+        }
+      }
+      return { cartItems: [...state.cartItems, item] }
+    })
+  },
+
+  removeFromCart: (itemId) => {
+    set((state) => ({
+      cartItems: state.cartItems.filter((item) => item.id !== itemId),
+    }))
+  },
+
+  updateCartItem: (itemId, updates) => {
+    set((state) => ({
+      cartItems: state.cartItems.map((item) =>
+        item.id === itemId ? { ...item, ...updates } : item
+      ),
+    }))
+  },
+
+  clearCart: () => {
+    set({ cartItems: [] })
+  },
+
+  getCartSubtotal: () => {
+    return get().cartItems.reduce((total, item) => total + item.itemTotal, 0)
+  },
+
+  getCartTotal: () => {
+    const { currentCheckout } = get()
+    const subtotal = get().getCartSubtotal()
+    const tax = Math.round(subtotal * 0.05) // 5% tax
+    const delivery = currentCheckout?.deliveryType === "delivery" ? 50 : 0
+    const discount = currentCheckout?.discountAmount || 0
+    return subtotal + tax + delivery - discount
+  },
+
+  setCartVisible: (visible) => {
+    set({ cartVisible: visible })
+  },
+
+  // Checkout Methods
+  setCheckoutAddress: (address) => {
+    set((state) => ({
+      currentCheckout: { ...state.currentCheckout, address },
+    }))
+  },
+
+  setDeliveryType: (type) => {
+    set((state) => ({
+      currentCheckout: { ...state.currentCheckout, deliveryType: type },
+    }))
+  },
+
+  setPaymentMethod: (method) => {
+    set((state) => ({
+      currentCheckout: { ...state.currentCheckout, paymentMethod: method },
+    }))
+  },
+
+  applyCoupon: (code) => {
+    const validCoupons: Record<string, number> = {
+      "CAFE10": 0.1,
+      "SAVE50": 50,
+      "FLAT30": 30,
+    }
+
+    if (!validCoupons[code]) return false
+
+    const discount = typeof validCoupons[code] === 'number' && validCoupons[code] < 1
+      ? Math.round(get().getCartSubtotal() * validCoupons[code])
+      : validCoupons[code]
+
+    set((state) => ({
+      currentCheckout: {
+        ...state.currentCheckout,
+        couponCode: code,
+        discountAmount: discount,
+      },
+    }))
+    return true
+  },
+
+  getCheckoutSummary: () => {
+    const subtotal = get().getCartSubtotal()
+    const tax = Math.round(subtotal * 0.05)
+    const { currentCheckout } = get()
+    const delivery = currentCheckout?.deliveryType === "delivery" ? 50 : 0
+    const discount = currentCheckout?.discountAmount || 0
+    return {
+      subtotal,
+      tax,
+      delivery,
+      discount,
+      total: subtotal + tax + delivery - discount,
+    }
+  },
+
+  placeOrder: (address, deliveryType, paymentMethod) => {
+    const { cartItems } = get()
+    if (cartItems.length === 0) return null
+
+    const summary = get().getCheckoutSummary()
+    const orderId = `ORD-${Date.now()}`
+
+    const newOrder: Order = {
+      id: orderId,
+      items: cartItems,
+      status: "pending",
+      subtotal: summary.subtotal,
+      tax: summary.tax,
+      deliveryCharges: summary.delivery,
+      discount: summary.discount,
+      totalPrice: summary.total,
+      createdAt: new Date(),
+      estimatedDeliveryTime: deliveryType === "delivery" ? 40 : 15,
+    }
+
+    set((state) => ({
+      orders: [...state.orders, newOrder],
+      currentOrder: newOrder,
+      cartItems: [],
+      currentCheckout: { deliveryType: "delivery", discountAmount: 0 },
+    }))
+
+    return newOrder
+  },
+
+  updateOrderStatus: (orderId, status) => {
+    set((state) => ({
+      orders: state.orders.map((order) =>
+        order.id === orderId ? { ...order, status } : order
+      ),
+    }))
+  },
+
+  getOrder: (orderId) => {
+    return get().orders.find((o) => o.id === orderId)
+  },
+
+  getAllOrders: () => {
+    return get().orders
   },
 }))
