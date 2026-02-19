@@ -1,4 +1,5 @@
 export type MenuCategory = "starters" | "main" | "south-indian" | "beverages" | "desserts"
+export type SpiceLevel = "mild" | "medium" | "hot" | "extra-hot"
 
 export interface MenuItem {
   id: number
@@ -7,7 +8,25 @@ export interface MenuItem {
   price: number
   category: MenuCategory
   image: string
+  canCustomizeSpice?: boolean
+  defaultSpice?: SpiceLevel
 }
+
+export interface OrderItem {
+  id: string
+  menuItemId: number
+  quantity: number
+  spiceLevel?: SpiceLevel
+  specialInstructions?: string
+  timestamp: Date
+}
+
+export const spiceLevels: { id: SpiceLevel; label: string; description: string }[] = [
+  { id: "mild", label: "Mild", description: "Gentle and subtle" },
+  { id: "medium", label: "Medium", description: "Balanced heat" },
+  { id: "hot", label: "Hot", description: "Spicy kick" },
+  { id: "extra-hot", label: "Extra Hot", description: "Intense heat" },
+]
 
 export const categories: { id: MenuCategory; label: string; emoji: string }[] = [
   { id: "starters", label: "Starters", emoji: "🥟" },
@@ -26,6 +45,8 @@ export const menuItems: MenuItem[] = [
     price: 180,
     category: "starters",
     image: "/gobi-manchurian-crispy-cauliflower-indo-chinese-di.jpg",
+    canCustomizeSpice: true,
+    defaultSpice: "medium",
   },
   {
     id: 2,
@@ -34,6 +55,8 @@ export const menuItems: MenuItem[] = [
     price: 220,
     category: "starters",
     image: "/paneer-tikka-grilled-indian-appetizer.jpg",
+    canCustomizeSpice: true,
+    defaultSpice: "mild",
   },
   {
     id: 3,
@@ -42,6 +65,8 @@ export const menuItems: MenuItem[] = [
     price: 160,
     category: "starters",
     image: "/baby-corn-65-crispy-fried-indian-starter.jpg",
+    canCustomizeSpice: true,
+    defaultSpice: "hot",
   },
   // Main Course
   {
@@ -51,6 +76,8 @@ export const menuItems: MenuItem[] = [
     price: 250,
     category: "main",
     image: "/vegetable-biryani-indian-rice-dish.jpg",
+    canCustomizeSpice: true,
+    defaultSpice: "medium",
   },
   {
     id: 5,
@@ -59,6 +86,8 @@ export const menuItems: MenuItem[] = [
     price: 280,
     category: "main",
     image: "/paneer-butter-masala-creamy-indian-curry.jpg",
+    canCustomizeSpice: true,
+    defaultSpice: "mild",
   },
   {
     id: 6,
@@ -67,6 +96,8 @@ export const menuItems: MenuItem[] = [
     price: 200,
     category: "main",
     image: "/dal-makhani-black-lentils-indian-dish.jpg",
+    canCustomizeSpice: true,
+    defaultSpice: "mild",
   },
   // South Indian Specials
   {
@@ -76,6 +107,8 @@ export const menuItems: MenuItem[] = [
     price: 120,
     category: "south-indian",
     image: "/masala-dosa-crispy-south-indian-crepe-with-potato-.jpg",
+    canCustomizeSpice: true,
+    defaultSpice: "medium",
   },
   {
     id: 8,
@@ -84,6 +117,8 @@ export const menuItems: MenuItem[] = [
     price: 80,
     category: "south-indian",
     image: "/idli-sambar-south-indian-breakfast.jpg",
+    canCustomizeSpice: true,
+    defaultSpice: "mild",
   },
   {
     id: 9,
@@ -92,6 +127,8 @@ export const menuItems: MenuItem[] = [
     price: 70,
     category: "south-indian",
     image: "/medu-vada-crispy-south-indian-lentil-donut.jpg",
+    canCustomizeSpice: true,
+    defaultSpice: "medium",
   },
   {
     id: 10,
@@ -100,6 +137,8 @@ export const menuItems: MenuItem[] = [
     price: 100,
     category: "south-indian",
     image: "/uttapam-south-indian-pancake-with-vegetables.jpg",
+    canCustomizeSpice: true,
+    defaultSpice: "medium",
   },
   // Beverages
   {

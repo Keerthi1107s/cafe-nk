@@ -1,8 +1,10 @@
 "use client"
 
 import { create } from "zustand"
+import type { OrderItem, SpiceLevel } from "./menu-data"
 
 export type TableStatus = "free" | "occupied" | "reserved"
+export type OrderStatus = "pending" | "preparing" | "ready" | "served"
 
 export interface TimeSlot {
   start: string // "08:00"
@@ -77,9 +79,19 @@ export function formatDate(date: string): string {
   return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
 }
 
+interface Order {
+  id: string
+  tableId: number
+  items: OrderItem[]
+  status: OrderStatus
+  totalPrice: number
+  createdAt: Date
+}
+
 interface CafeStore {
   tables: Table[]
   bookings: Booking[]
+  orders: Order[]
   userRole: "staff" | "customer" | null
   selectedDate: string
   selectedSlot: TimeSlot | null
@@ -105,6 +117,11 @@ interface CafeStore {
   getBookingsPerSlot: () => { slot: string; count: number }[]
   getDailyUtilization: () => number
   getTotalBookingsToday: () => number
+
+  addOrder: (tableId: number, items: OrderItem[]) => string
+  updateOrderStatus: (orderId: string, status: OrderStatus) => void
+  getOrdersForTable: (tableId: number) => Order[]
+  getAllOrders: () => Order[]
 }
 
 const initialTables: Table[] = Array.from({ length: 10 }, (_, i) => ({
@@ -175,6 +192,7 @@ const sampleBookings: Booking[] = [
 export const useCafeStore = create<CafeStore>((set, get) => ({
   tables: initialTables,
   bookings: sampleBookings,
+  orders: [],
   userRole: null,
   selectedDate: today,
   selectedSlot: getCurrentTimeSlot() || TIME_SLOTS[0],
@@ -317,5 +335,43 @@ export const useCafeStore = create<CafeStore>((set, get) => ({
   getTotalBookingsToday: () => {
     const today = new Date().toISOString().split("T")[0]
     return get().bookings.filter((b) => b.date === today).length
+  },
+
+  addOrder: (tableId, items) => {
+    const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    
+    // Calculate total price from the items (you may need to fetch menu items for prices)
+    const totalPrice = 0 // This will be calculated in the component
+
+    const newOrder: Order = {
+      id: orderId,
+      tableId,
+      items,
+      status: "pending",
+      totalPrice,
+      createdAt: new Date(),
+    }
+
+    set((state) => ({
+      orders: [...state.orders, newOrder],
+    }))
+
+    return orderId
+  },
+
+  updateOrderStatus: (orderId, status) => {
+    set((state) => ({
+      orders: state.orders.map((order) =>
+        order.id === orderId ? { ...order, status } : order
+      ),
+    }))
+  },
+
+  getOrdersForTable: (tableId) => {
+    return get().orders.filter((o) => o.tableId === tableId)
+  },
+
+  getAllOrders: () => {
+    return get().orders
   },
 }))

@@ -1,16 +1,19 @@
 "use client"
 
 import { useState } from "react"
-import { UtensilsCrossed } from "lucide-react"
+import { UtensilsCrossed, ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MenuItemCard } from "./menu-item-card"
 import { MenuItemModal } from "./menu-item-modal"
+import { OrderSummary } from "./order-summary"
 import { menuItems, categories, type MenuItem, type MenuCategory } from "@/lib/menu-data"
 
 export function MenuSection() {
   const [selectedCategory, setSelectedCategory] = useState<MenuCategory | "all">("all")
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState("browse")
 
   const filteredItems =
     selectedCategory === "all" ? menuItems : menuItems.filter((item) => item.category === selectedCategory)
@@ -22,50 +25,82 @@ export function MenuSection() {
 
   return (
     <div className="space-y-6">
-      {/* Menu Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-primary/10">
-          <UtensilsCrossed className="w-6 h-6 text-primary" />
-        </div>
-        <div>
-          <h2 className="text-xl font-semibold text-foreground">Our Menu</h2>
-          <p className="text-sm text-muted-foreground">Explore our delicious offerings</p>
-        </div>
-      </div>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="browse" className="flex items-center gap-2">
+            <UtensilsCrossed className="w-4 h-4" />
+            Browse Menu
+          </TabsTrigger>
+          <TabsTrigger value="order" className="flex items-center gap-2">
+            <ShoppingCart className="w-4 h-4" />
+            Your Order
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Category Filter */}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant={selectedCategory === "all" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSelectedCategory("all")}
-          className="rounded-full"
-        >
-          All Items
-        </Button>
-        {categories.map((category) => (
-          <Button
-            key={category.id}
-            variant={selectedCategory === category.id ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedCategory(category.id)}
-            className="rounded-full"
-          >
-            {category.emoji} {category.label}
-          </Button>
-        ))}
-      </div>
+        <TabsContent value="browse" className="space-y-6">
+          {/* Menu Header */}
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <UtensilsCrossed className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">Our Menu</h2>
+              <p className="text-sm text-muted-foreground">Explore our delicious offerings and customize spice levels</p>
+            </div>
+          </div>
 
-      {/* Menu Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredItems.map((item) => (
-          <MenuItemCard key={item.id} item={item} onClick={() => handleItemClick(item)} />
-        ))}
-      </div>
+          {/* Category Filter */}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={selectedCategory === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedCategory("all")}
+              className="rounded-full"
+            >
+              All Items
+            </Button>
+            {categories.map((category) => (
+              <Button
+                key={category.id}
+                variant={selectedCategory === category.id ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCategory(category.id)}
+                className="rounded-full"
+              >
+                {category.emoji} {category.label}
+              </Button>
+            ))}
+          </div>
 
-      {filteredItems.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">No items found in this category.</div>
-      )}
+          {/* Menu Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredItems.map((item) => (
+              <MenuItemCard key={item.id} item={item} onClick={() => handleItemClick(item)} />
+            ))}
+          </div>
+
+          {filteredItems.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">No items found in this category.</div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="order">
+          {/* Order Summary */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <ShoppingCart className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">Your Order</h2>
+                <p className="text-sm text-muted-foreground">Review your items and proceed to checkout</p>
+              </div>
+            </div>
+            <OrderSummary />
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <MenuItemModal item={selectedItem} open={modalOpen} onOpenChange={setModalOpen} />
     </div>
